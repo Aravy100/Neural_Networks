@@ -1,0 +1,371 @@
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+import seaborn as sns
+import matplotlib.pyplot as plt
+import sklearn
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import tree
+
+#################### Copied from Assignment 1 #############
+data = pd.read_csv(r"C:\Users\17207\My Drive\From DropBox\00 Data Science (CU)\Spring 2023\Text Mining\data_final.csv")
+data = data[['Label','content']]
+data['content']=data['content'].values.astype('U')
+data = data.sample(frac=1)
+data = data.reset_index(drop=True)
+
+##### Count Vectorized Input Data ####
+vectorizer = CountVectorizer(input="content",lowercase=True,max_features=500000)          # Initiate Count Vectorizer object
+content_list = data['content'].tolist() # Convert dataframe column to a list
+vec_matrix = vectorizer.fit_transform(content_list)
+vec_array = vec_matrix.toarray()
+data_cv = pd.DataFrame(vec_array, columns=vectorizer.get_feature_names_out())
+data_cv=data_cv.fillna(0)
+
+#### TF-IDF Vectorized Input Data ####
+t_vectorizer = TfidfVectorizer(input="content",lowercase=True, max_features=500000)
+t_matrix = t_vectorizer.fit_transform(content_list)
+t_array = t_matrix.toarray()
+data_tfidf = pd.DataFrame(data=t_array, columns=t_vectorizer.get_feature_names_out())
+data_tfidf=data_tfidf.fillna(0)
+
+# Now the dataframe is ready, split into test/train
+X_train, X_test, y_train, y_test = train_test_split(
+    data_tfidf,data['Label'],random_state=3333,test_size=0.28, shuffle=False)
+
+data_tfidf.to_csv(r"C:\Users\17207\My Drive\From DropBox\00 Data Science (CU)\Spring 2023\Text Mining\full_data_tfidf.csv")
+X_train.to_csv(r"C:\Users\17207\My Drive\From DropBox\00 Data Science (CU)\Spring 2023\Text Mining\X_train.csv")
+X_test.to_csv(r"C:\Users\17207\My Drive\From DropBox\00 Data Science (CU)\Spring 2023\Text Mining\X_test.csv")
+y_train.to_csv(r"C:\Users\17207\My Drive\From DropBox\00 Data Science (CU)\Spring 2023\Text Mining\y_train.csv")
+y_test.to_csv(r"C:\Users\17207\My Drive\From DropBox\00 Data Science (CU)\Spring 2023\Text Mining\y_test.csv")
+
+
+##########################################################################
+############################ NAIVE BAYES #################################
+##########################################################################
+
+# Instantiate Multinomial NB
+MyModelNB= MultinomialNB()
+# Fit the trained model
+MyModelNB.fit(X_train, y_train)
+# Predict using the fitted model
+Prediction = MyModelNB.predict(X_test)
+# Build a confusion matrix
+cnf_matrix = confusion_matrix(y_test, Prediction)
+# Creating a dataframe for a array-formatted Confusion matrix,so it will be easy for plotting.
+cm_df = pd.DataFrame(cnf_matrix,
+                     index = ['chinese','indian','italian', 'french', 'mediterranean'], 
+                     columns = ['chinese','indian','italian', 'french', 'mediterranean']) 
+#Plotting the confusion matrix
+# https://www.analyticsvidhya.com/blog/2021/06/confusion-matrix-for-multi-class-classification/
+plt.figure(figsize=(5,4))
+sns.heatmap(cm_df, annot=True)
+plt.title('Confusion Matrix')
+plt.ylabel('Actual Values')
+plt.xlabel('Predicted Values')
+plt.show()
+
+accuracy_score(y_test,Prediction)
+
+# Take 4 pictures of the text and train of X & Y.
+
+
+
+
+##########################################################################
+############################ DECISION TREE ###############################
+##########################################################################
+
+##################### TREE 1 #####################
+
+# Instantiate the decision tree
+MyDT=DecisionTreeClassifier(criterion='gini',splitter='best', 
+                            max_depth=3, random_state=341)
+# Fit the training data to the model
+MyDT.fit(X_train, y_train)
+
+# Visualize the decision tree
+fig, axes = plt.subplots(figsize=(12, 8))
+tree.plot_tree(MyDT, 
+               feature_names=X_train.columns,
+               class_names=['chinese','indian','italian', 'french', 'mediterranean'],
+               filled=True,
+               ax=axes,
+               fontsize=12)
+plt.savefig('decision_tree1.png')
+plt.show()
+
+
+# Run the test data over this model
+DT_pred=MyDT.predict(X_test)
+# Build a confusion matrix
+bn_matrix = confusion_matrix(y_test, DT_pred)
+
+cmbn_df = pd.DataFrame(bn_matrix,
+                     index = ['chinese','indian','italian', 'french', 'mediterranean'], 
+                     columns = ['chinese','indian','italian', 'french', 'mediterranean']) 
+
+#Plotting the confusion matrix
+# https://www.analyticsvidhya.com/blog/2021/06/confusion-matrix-for-multi-class-classification/
+plt.figure(figsize=(5,4))
+sns.heatmap(cmbn_df, annot=True)
+plt.title('Confusion Matrix')
+plt.ylabel('Actual Values')
+plt.xlabel('Predicted Values')
+plt.show()
+
+# Accuracy
+accuracy_score(y_test,DT_pred)
+
+################ COMPARING RESULTS OF PREDICTION WITH ACTUALS ################
+temp = pd.Series(DT_pred,name='pred_label')
+x = pd.DataFrame(data.join(temp,how='inner'))
+##############################################################################
+
+
+##################### TREE 2 #####################
+
+# Instantiate the decision tree
+MyDT=DecisionTreeClassifier(criterion='entropy',splitter='best', 
+                            max_depth=3, random_state=754, min_samples_leaf=30)
+# Fit the training data to the model
+MyDT.fit(X_train, y_train)
+
+# Visualize the decision tree
+fig, axes = plt.subplots(figsize=(12, 8))
+tree.plot_tree(MyDT, 
+               feature_names=X_train.columns,
+               class_names=['chinese','indian','italian', 'french', 'mediterranean'],
+               filled=True,
+               ax=axes,
+               fontsize=12)
+plt.savefig('decision_tree2.png')
+plt.show()
+
+# Run the test data over this model
+DT_pred=MyDT.predict(X_test)
+# Build a confusion matrix
+bn_matrix = confusion_matrix(y_test, DT_pred)
+
+cmbn_df = pd.DataFrame(bn_matrix,
+                     index = ['chinese','indian','italian', 'french', 'mediterranean'], 
+                     columns = ['chinese','indian','italian', 'french', 'mediterranean']) 
+
+#Plotting the confusion matrix
+# https://www.analyticsvidhya.com/blog/2021/06/confusion-matrix-for-multi-class-classification/
+plt.figure(figsize=(5,4))
+sns.heatmap(cmbn_df, annot=True)
+plt.title('Confusion Matrix')
+plt.ylabel('Actual Values')
+plt.xlabel('Predicted Values')
+plt.show()
+
+# Accuracy
+accuracy_score(y_test,DT_pred)
+
+
+
+##################### TREE 3 #####################
+
+# Instantiate the decision tree
+MyDT=DecisionTreeClassifier(criterion='log_loss',splitter='best', 
+                            random_state=341, max_depth=4, min_samples_split=6,
+                            min_samples_leaf=20)
+# Fit the training data to the model
+MyDT.fit(X_train, y_train)
+
+# Visualize the decision tree
+fig, axes = plt.subplots(figsize=(12, 8))
+tree.plot_tree(MyDT, 
+               feature_names=X_train.columns,
+               class_names=['chinese','indian','italian', 'french', 'mediterranean'],
+               filled=True,
+               ax=axes,
+               fontsize=11)
+plt.savefig('decision_tree3.png')
+plt.show()
+
+# Run the test data over this model
+DT_pred=MyDT.predict(X_test)
+# Build a confusion matrix
+bn_matrix = confusion_matrix(y_test, DT_pred)
+
+cmbn_df = pd.DataFrame(bn_matrix,
+                     index = ['chinese','indian','italian', 'french', 'mediterranean'], 
+                     columns = ['chinese','indian','italian', 'french', 'mediterranean']) 
+
+#Plotting the confusion matrix
+# https://www.analyticsvidhya.com/blog/2021/06/confusion-matrix-for-multi-class-classification/
+plt.figure(figsize=(5,4))
+sns.heatmap(cmbn_df, annot=True)
+plt.title('Confusion Matrix')
+plt.ylabel('Actual Values')
+plt.xlabel('Predicted Values')
+plt.show()
+
+# Accuracy
+accuracy_score(y_test,DT_pred)
+
+
+
+
+##########################################################################
+############################## SVM #######################################
+##########################################################################
+
+### Linear Kernel ###
+
+from sklearn.svm import LinearSVC
+
+SVM_Model1=LinearSVC(C=200, loss='hinge')
+SVM_Model1.fit(X_train, y_train)
+
+print("SVM 1 prediction:\n", SVM_Model1.predict(X_test))
+print("Actual:")
+print(y_test)
+
+SVM_matrix = confusion_matrix(y_test, SVM_Model1.predict(X_test))
+SVM_CFMATRIX = pd.DataFrame(SVM_matrix,
+                     index = ['chinese','indian','italian', 'french', 'mediterranean'], 
+                     columns = ['chinese','indian','italian', 'french', 'mediterranean']
+                     ) 
+
+# Plotting the confusion matrix
+# https://www.analyticsvidhya.com/blog/2021/06/confusion-matrix-for-multi-class-classification/
+plt.figure(figsize=(5,4))
+sns.heatmap(SVM_CFMATRIX, annot=True)
+plt.title('Confusion Matrix')
+plt.ylabel('Actual Values')
+plt.xlabel('Predicted Values')
+plt.show()
+
+accuracy_score(y_test,SVM_Model1.predict(X_test))
+
+################ COMPARING RESULTS OF PREDICTION WITH ACTUALS ################
+temp = pd.Series(SVM_Model1.predict(X_test),name='pred_label')
+x = pd.DataFrame(data.join(temp,how='inner'))
+
+
+
+
+##############################################################################
+### Gaussian RBF Kernel ###
+
+SVM_Model2 = sklearn.svm.SVC(C=200, kernel='rbf', gamma="scale")
+SVM_Model2.fit(X_train, y_train)
+
+SVM_matrix = confusion_matrix(y_test, SVM_Model2.predict(X_test))
+SVM_CFMATRIX = pd.DataFrame(SVM_matrix,
+                     index = ['chinese','indian','italian', 'french', 'mediterranean'], 
+                     columns = ['chinese','indian','italian', 'french', 'mediterranean']) 
+
+accuracy_score(y_test,SVM_Model2.predict(X_test))
+
+# Plotting the confusion matrix
+# https://www.analyticsvidhya.com/blog/2021/06/confusion-matrix-for-multi-class-classification/
+plt.figure(figsize=(5,4))
+sns.heatmap(SVM_CFMATRIX, annot=True)
+plt.title('Confusion Matrix')
+plt.ylabel('Actual Values')
+plt.xlabel('Predicted Values')
+plt.show()
+
+
+
+
+### Polynomial Kernel ###
+
+SVM_Model3=sklearn.svm.SVC(C=500, kernel='poly', degree=3, gamma="scale")
+SVM_Model3.fit(X_train, y_train)
+
+SVM_matrix = confusion_matrix(y_test, SVM_Model3.predict(X_test))
+SVM_CFMATRIX = pd.DataFrame(SVM_matrix,
+                     index = ['chinese','indian','italian', 'french', 'mediterranean'], 
+                     columns = ['chinese','indian','italian', 'french', 'mediterranean']) 
+            
+# Plotting the confusion matrix
+# https://www.analyticsvidhya.com/blog/2021/06/confusion-matrix-for-multi-class-classification/
+plt.figure(figsize=(5,4))
+sns.heatmap(SVM_CFMATRIX, annot=True)
+plt.title('Confusion Matrix')
+plt.ylabel('Actual Values')
+plt.xlabel('Predicted Values')
+plt.show()
+
+accuracy_score(y_test,SVM_Model3.predict(X_test))
+
+## Calculate Sentiment for each of the reviews
+from textblob import TextBlob
+# function to calculate polarity
+def getPolarity(review):
+    return TextBlob(review).sentiment.polarity
+
+# function to analyze the reviews
+def analysis(score):
+    if score < 0:
+        return 'Negative'
+    elif score == 0:
+        return 'Neutral'
+    else:
+        return 'Positive'
+ 
+data['Polarity'] = data['content'].apply(getPolarity) 
+data['Analysis'] = data['Polarity'].apply(analysis)
+data.head()
+
+X_train, X_test, y_train, y_test = train_test_split(
+    data_tfidf,data['Analysis'],random_state=3333,test_size=0.28, shuffle=False)
+
+from sklearn.svm import LinearSVC
+
+SVM_Model4=LinearSVC(C=200, loss='hinge')
+SVM_Model4.fit(X_train, y_train)
+
+print("SVM 1 prediction:\n", SVM_Model4.predict(X_test))
+print("Actual:")
+print(y_test)
+
+SVM_matrix = confusion_matrix(y_test, SVM_Model4.predict(X_test))
+SVM_CFMATRIX = pd.DataFrame(SVM_matrix,
+                     index = ['positive','negative','neutral'], 
+                     columns = ['positive','negative','neutral']
+                     ) 
+
+# Plotting the confusion matrix
+# https://www.analyticsvidhya.com/blog/2021/06/confusion-matrix-for-multi-class-classification/
+plt.figure(figsize=(5,4))
+sns.heatmap(SVM_CFMATRIX, annot=True)
+plt.title('Confusion Matrix')
+plt.ylabel('Actual Values')
+plt.xlabel('Predicted Values')
+plt.show()
+
+accuracy_score(y_test,SVM_Model4.predict(X_test))
+
+
+
+###################### VISUAL ###################################
+SVM_Model = LinearSVC()
+SVM_Model.fit(X_train,y_train)
+
+def plot_coefficients(MODEL=SVM_Model, COLNAMES=X_train.columns, top_features=10):
+    ## Model if SVM MUST be SVC, RE: SVM_Model=LinearSVC(C=10)
+    coef = MODEL.coef_.ravel()
+    top_positive_coefficients = np.argsort(coef,axis=0)[-top_features:]
+    top_negative_coefficients = np.argsort(coef,axis=0)[:top_features]
+    top_coefficients = np.hstack([top_negative_coefficients, top_positive_coefficients])
+    # create plot
+    plt.figure(figsize=(15, 5))
+    colors = ["red" if c < 0 else "blue" for c in coef[top_coefficients]]
+    plt.bar(  x=  np.arange(2 * top_features)  , height=coef[top_coefficients], width=.5,  color=colors)
+    feature_names = np.array(COLNAMES)
+    plt.xticks(np.arange(0, (2*top_features)), feature_names[top_coefficients], rotation=60, ha="right")
+    plt.show()
+
+plot_coefficients()
+#plt.savefig('KeyWords.pdf')

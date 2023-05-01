@@ -1,0 +1,82 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon May  1 14:47:40 2023
+
+@author: Aravindh Saravanan
+"""
+
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from tensorflow import keras
+import numpy as np
+
+
+#################### Load the cleaned and processed data #############
+data = pd.read_csv(r"C:\Users\17207\My Drive\From DropBox\00 Data Science (CU)\Spring 2023\Text Mining\data_final.csv")
+data = data[['Label','content']]
+data['content']=data['content'].values.astype('U')
+data = data.reset_index(drop=True)
+#####################################################################
+
+
+######################### Count Vectorized Input Data #########################
+vectorizer = CountVectorizer(input="content",lowercase=True,max_features=500)
+content_list = data['content'].tolist() # Convert dataframe column to a list
+vec_matrix = vectorizer.fit_transform(content_list)
+vec_array = vec_matrix.toarray()
+data_cv = pd.DataFrame(vec_array, columns=vectorizer.get_feature_names_out())
+data_cv=data_cv.fillna(0)
+
+
+################## Convert into Numpy arrays for reading in NN ################
+# Convert X first
+X = np.asarray(data_cv).astype(np.float32)
+
+# Convert the y now
+# Assigning the label to y and transposing to make sure it is in the required shape
+y = np.array(data['Label']).T
+y = np.array([y]).T
+
+# Perform Label encoding first and then use it for one hot encoding
+encoder = LabelEncoder()
+# Fit and transform your data
+y_encoded = encoder.fit_transform(y)
+# Setting some details of our dataframe to variables
+InputColumns = X.shape[1]
+NumberOfLabels = len(np.unique(y_encoded))
+n = len(X)
+# Creating one hot labels for y
+temp = y_encoded
+one_hot_labels = np.zeros((n, NumberOfLabels))
+for i in range(n):
+    one_hot_labels[i, temp[i]-1] = 1    
+y = one_hot_labels
+print(y)
+
+# Now the dataframe is ready, split into test/train
+X_train, X_test, y_train, y_test = train_test_split(
+    X,y,random_state=3333,test_size=0.25, shuffle=True)
+
+
+# Define the architecture of the Neural Network
+model = keras.Sequential([
+    keras.layers.Dense(256, input_shape=(500,), activation='relu'),
+    keras.layers.Dense(128, activation = 'relu'),
+    keras.layers.Dense(64, activation = 'relu'),
+    keras.layers.Dense(5, activation = 'softmax')
+])
+
+# Compiling the model
+model.compile(optimizer='adam',
+              loss=keras.losses.BinaryCrossentropy(),
+              metrics=['accuracy'])
+
+# fitting the model
+model.fit(X_train, y_train, epochs=100, batch_size=200)
+
+# Evaluating using test and train
+results = model.evaluate(X_test, y_test, batch_size=64)
+
+

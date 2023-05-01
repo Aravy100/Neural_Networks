@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+from sklearn import preprocessing
 from tensorflow import keras
 import numpy as np
 
@@ -30,9 +31,23 @@ data_cv = pd.DataFrame(vec_array, columns=vectorizer.get_feature_names_out())
 data_cv=data_cv.fillna(0)
 
 
+############################# TF-IDF Vectorizer ###############################
+t_vectorizer = TfidfVectorizer(input="content",lowercase=True, max_features=10000)
+t_matrix = t_vectorizer.fit_transform(content_list)
+t_array = t_matrix.toarray()
+df_tfidf = pd.DataFrame(data=t_array, columns=t_vectorizer.get_feature_names_out())
+data_cv=df_tfidf.fillna(0)
+
+
+
 ################## Convert into Numpy arrays for reading in NN ################
 # Convert X first
 X = np.asarray(data_cv).astype(np.float32)
+
+# Scaling
+# min_max_scaler = preprocessing.MinMaxScaler()
+# X_scaled = min_max_scaler.fit_transform(X)
+# X = X_scaled
 
 # Convert the y now
 # Assigning the label to y and transposing to make sure it is in the required shape
@@ -62,7 +77,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 # Define the architecture of the Neural Network
 model = keras.Sequential([
-    keras.layers.Dense(256, input_shape=(500,), activation='relu'),
+    keras.layers.Dense(256, input_shape=(5786,), activation='relu'),
     keras.layers.Dense(128, activation = 'relu'),
     keras.layers.Dense(64, activation = 'relu'),
     keras.layers.Dense(5, activation = 'softmax')
@@ -70,7 +85,7 @@ model = keras.Sequential([
 
 # Compiling the model
 model.compile(optimizer='adam',
-              loss=keras.losses.BinaryCrossentropy(),
+              loss=keras.losses.CategoricalCrossentropy(),
               metrics=['accuracy'])
 
 # fitting the model
@@ -78,5 +93,5 @@ model.fit(X_train, y_train, epochs=100, batch_size=200)
 
 # Evaluating using test and train
 results = model.evaluate(X_test, y_test, batch_size=64)
-
+print(results)
 
